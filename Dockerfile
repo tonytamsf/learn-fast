@@ -1,15 +1,15 @@
 # Multi-stage Dockerfile for LearnFast (React + Express + OpenAI)
 
 # Stage 1: Build React frontend
-FROM node:18-alpine AS client-builder
+FROM node:20-alpine AS client-builder
 
 WORKDIR /app/client
 
 # Copy client package files
 COPY client/package*.json ./
 
-# Install client dependencies
-RUN npm ci --only=production
+# Install ALL client dependencies (including devDependencies needed for build)
+RUN npm ci
 
 # Copy client source code
 COPY client/ ./
@@ -18,7 +18,7 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Setup Express backend with built frontend
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
