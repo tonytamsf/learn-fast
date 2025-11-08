@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from React build
-app.use(express.static(path.join(__dirname, '../client/dist')));
+app.use(express.static(path.join(__dirname, 'client/dist')));
 
 const client = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
 
@@ -130,7 +130,7 @@ app.get("/api/health", (req, res) => {
 
 // Catch-all route to serve React app for all other routes
 app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    res.sendFile(path.join(__dirname, 'client/dist/index.html'));
 })
 
 app.listen(PORT, '0.0.0.0', () => {
