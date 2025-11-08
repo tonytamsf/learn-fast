@@ -40,40 +40,29 @@ app.post("/api/auto", async (req, res) => {
     let resp;
     const { main, level, depth} = req.body;
     try {
-    let response = await client.responses.create({
-        model: "gpt-5-mini", // go mini or nomal if this doesnt work
-        //tools: [{ type: "web_search"}],
-        input: 
-        `List 3–5 ${depth}-level subtopics of ${main}, 
-        useful for a ${level} learner. 
-        Return only a JS list of strings ≤5 words.`
-    })
-    // let resp = response.output_text;
-    // // Use the helper function that handles single quotes correctly
-    // let array = parseArrayResponse(resp);
-    // console.log(typeof array, array); 
-    // res.json(array);
-        resp = response.output_text
-    } catch (error) {
-        resp = []
-    } finally {
-        let array
-        try {
-            if (resp.startsWith('"') && resp.endsWith('"')) {
-                resp = "'" + resp.slice(1, -1) + "'";
-            }
-            array = JSON.parse(resp)
-        } catch (error) {
-            console.error("unparsable auto")
-            array = []
-        }
-        console.log(typeof array, array)
-        // Parse the string array into an actual array
-        res.json(array);
-    }
-    
+        let response = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{
+                role: "user",
+                content: `List 3–5 ${depth}-level subtopics of ${main}, useful for a ${level} learner. Return ONLY a valid JSON array of strings, each ≤5 words. Example format: ["topic 1", "topic 2", "topic 3"]`
+            }],
+            response_format: { type: "json_object" }
+        });
 
-    
+        const content = response.choices[0].message.content;
+        console.log("OpenAI auto response:", content);
+
+        // Parse the JSON response
+        const parsed = JSON.parse(content);
+        // Handle both direct array and object with array property
+        resp = Array.isArray(parsed) ? parsed : (parsed.topics || parsed.subtopics || Object.values(parsed)[0] || []);
+    } catch (error) {
+        console.error("OpenAI API error (auto):", error.message);
+        resp = [];
+    }
+
+    console.log("Auto result:", resp);
+    res.json(resp);
 })
 
 
@@ -82,45 +71,32 @@ app.post("/api/learn", async (req, res) => {
     let resp;
     const { main, level, depth, sub, goal } = req.body;
     try {
-        let medium = "video"
-        let response = await client.responses.create({
-            model: "gpt-5", 
-            tools: [{ type: "web_search"}],
-            input: `For each subtopic in ${sub}, give one ${medium} link about ${main} 
-            at ${depth} level, useful to a ${level} learning to ${goal}.  
-            Return JS list of links.  
-            No JSON, no extra colons, keep order.`
-        })
-        resp = response.output_text
+        const medium = "video tutorial or course";
+        const response = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{
+                role: "user",
+                content: `For each of these subtopics: ${JSON.stringify(sub)}, recommend one high-quality ${medium} URL about ${main} at ${depth} level, suitable for a ${level} learner${goal ? ` who wants to ${goal}` : ''}.
+
+Return ONLY a valid JSON object with a "resources" array containing the URLs in the exact same order as the subtopics. Each URL should be from popular educational platforms (YouTube, Coursera, edX, Khan Academy, freeCodeCamp, Udemy, etc.).
+
+Format: {"resources": ["https://url1.com", "https://url2.com", ...]}`
+            }],
+            response_format: { type: "json_object" }
+        });
+
+        const content = response.choices[0].message.content;
+        console.log("OpenAI learn response:", content);
+
+        const parsed = JSON.parse(content);
+        resp = parsed.resources || parsed.urls || parsed.links || [];
     } catch (error) {
-        resp = []
-    } finally {
-        let array
-        try {
-            if (resp.startsWith('"') && resp.endsWith('"')) {
-                resp = "'" + resp.slice(1, -1) + "'";
-            }
-            array = JSON.parse(resp)
-        } catch (error) {
-            console.error("unparsable learn")
-            array = []
-        }
-        console.log(typeof array, array)
-        // Parse the string array into an actual array
-        res.json(array);
+        console.error("OpenAI API error (learn):", error.message);
+        resp = [];
     }
 
-
-    // app.get("/api/learn", (req, res) => {
-//     // const {main, subtopic, } = req.body
-//     client.responses.create({
-//         model: "gpt-5", 
-//         tools: [{ type: "web_search"}],
-//         input: "say smth", 
-//     })
-//     .then(data => data.json(res.output_text))
-// .then(console.log(res))
-
+    console.log("Learn result:", resp);
+    res.json(resp);
 })
 
 // Health check endpoint
