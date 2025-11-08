@@ -1,13 +1,17 @@
 const express = require('express');
 const OpenAI = require("openai");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 require("dotenv").config();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 const client = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
 
@@ -119,10 +123,16 @@ app.post("/api/learn", async (req, res) => {
 
 })
 
-app.get("/", (req, res) => {
-    res.send("Hi, my name is Abe")
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
 })
 
-app.listen(PORT, () => {
-    console.log(`Server is running on PORT ${PORT}`) 
+// Catch-all route to serve React app for all other routes
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+})
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on PORT ${PORT}`)
 })
